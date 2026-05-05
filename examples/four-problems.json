@@ -1,0 +1,166 @@
+[
+  {
+    "title": "Sum of Two Integers",
+    "description": "Read a single line containing two integers separated by whitespace. Print their sum.",
+    "difficulty": "EASY",
+    "tags": ["Math", "Implementation"],
+    "constraints": "-10^6 <= a, b <= 10^6",
+    "hints": "Split the line and convert both parts to integers before adding.",
+    "editorial": "Parse two integers and output a + b.",
+    "testcases": [
+      { "input": "2 3", "output": "5" },
+      { "input": "10 20", "output": "30" },
+      { "input": "-4 7", "output": "3" }
+    ],
+    "examples": {
+      "JAVASCRIPT": {
+        "input": "a = 5, b = 6",
+        "output": "11",
+        "explanation": "5 + 6 = 11."
+      },
+      "PYTHON": {
+        "input": "a = 0, b = 0",
+        "output": "0",
+        "explanation": "0 + 0 = 0."
+      },
+      "JAVA": {
+        "input": "a = 100, b = -25",
+        "output": "75",
+        "explanation": "100 + (-25) = 75."
+      }
+    },
+    "codeSnippets": {
+      "JAVASCRIPT": "const readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });\nrl.on('line', (line) => {\n  // read two integers from line and print sum\n  rl.close();\n});",
+      "PYTHON": "import sys\n\nline = sys.stdin.readline().strip()\n# read two integers and print sum\n",
+      "JAVA": "import java.util.Scanner;\n\nclass Main {\n  public static void main(String[] args) {\n    Scanner s = new Scanner(System.in);\n    // read two integers and print sum\n    s.close();\n  }\n}"
+    },
+    "referenceSolutions": {
+      "JAVASCRIPT": "const readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });\nrl.on('line', (line) => {\n  const parts = line.trim().split(/\\s+/);\n  const a = parseInt(parts[0], 10);\n  const b = parseInt(parts[1], 10);\n  console.log(a + b);\n  rl.close();\n});",
+      "PYTHON": "import sys\n\na, b = map(int, sys.stdin.readline().split())\nprint(a + b)",
+      "JAVA": "import java.util.Scanner;\n\nclass Main {\n  public static void main(String[] args) {\n    Scanner s = new Scanner(System.in);\n    int a = s.nextInt();\n    int b = s.nextInt();\n    System.out.println(a + b);\n    s.close();\n  }\n}"
+    }
+  },
+  {
+    "title": "Square of a Number",
+    "description": "Read one integer n from standard input. Print n squared (n * n).",
+    "difficulty": "EASY",
+    "tags": ["Math"],
+    "constraints": "0 <= n <= 10000",
+    "hints": "Use multiplication, not a loop.",
+    "editorial": "Answer is n * n.",
+    "testcases": [
+      { "input": "4", "output": "16" },
+      { "input": "7", "output": "49" },
+      { "input": "0", "output": "0" }
+    ],
+    "examples": {
+      "JAVASCRIPT": {
+        "input": "n = 5",
+        "output": "25",
+        "explanation": "5 * 5 = 25."
+      },
+      "PYTHON": {
+        "input": "n = 9",
+        "output": "81",
+        "explanation": "9 * 9 = 81."
+      },
+      "JAVA": {
+        "input": "n = 12",
+        "output": "144",
+        "explanation": "12 * 12 = 144."
+      }
+    },
+    "codeSnippets": {
+      "JAVASCRIPT": "const readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });\nrl.on('line', (line) => {\n  const n = parseInt(line.trim(), 10);\n  // print n * n\n  rl.close();\n});",
+      "PYTHON": "import sys\n\nn = int(sys.stdin.readline().strip())\n# print n * n\n",
+      "JAVA": "import java.util.Scanner;\n\nclass Main {\n  public static void main(String[] args) {\n    Scanner s = new Scanner(System.in);\n    int n = Integer.parseInt(s.nextLine().trim());\n    // print n * n\n    s.close();\n  }\n}"
+    },
+    "referenceSolutions": {
+      "JAVASCRIPT": "const readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });\nrl.on('line', (line) => {\n  const n = parseInt(line.trim(), 10);\n  console.log(n * n);\n  rl.close();\n});",
+      "PYTHON": "import sys\n\nn = int(sys.stdin.readline().strip())\nprint(n * n)",
+      "JAVA": "import java.util.Scanner;\n\nclass Main {\n  public static void main(String[] args) {\n    Scanner s = new Scanner(System.in);\n    int n = Integer.parseInt(s.nextLine().trim());\n    System.out.println((long) n * n);\n    s.close();\n  }\n}"
+    }
+  },
+  {
+    "title": "Sum of Digits",
+    "description": "Read one non-negative integer n from standard input. Print the sum of its decimal digits.",
+    "difficulty": "EASY",
+    "tags": ["Math", "Implementation"],
+    "constraints": "0 <= n <= 10^9",
+    "hints": "Convert to string and iterate, or use modulo 10 in a loop.",
+    "editorial": "Repeatedly take n % 10 and add to sum, then n //= 10 until n is 0.",
+    "testcases": [
+      { "input": "123", "output": "6" },
+      { "input": "999", "output": "27" },
+      { "input": "0", "output": "0" }
+    ],
+    "examples": {
+      "JAVASCRIPT": {
+        "input": "n = 45",
+        "output": "9",
+        "explanation": "4 + 5 = 9."
+      },
+      "PYTHON": {
+        "input": "n = 1000",
+        "output": "1",
+        "explanation": "1 + 0 + 0 + 0 = 1."
+      },
+      "JAVA": {
+        "input": "n = 508",
+        "output": "13",
+        "explanation": "5 + 0 + 8 = 13."
+      }
+    },
+    "codeSnippets": {
+      "JAVASCRIPT": "const readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });\nrl.on('line', (line) => {\n  let n = parseInt(line.trim(), 10);\n  // print sum of digits\n  rl.close();\n});",
+      "PYTHON": "import sys\n\nn = int(sys.stdin.readline().strip())\n# print sum of digits\n",
+      "JAVA": "import java.util.Scanner;\n\nclass Main {\n  public static void main(String[] args) {\n    Scanner s = new Scanner(System.in);\n    long n = Long.parseLong(s.nextLine().trim());\n    // print sum of digits\n    s.close();\n  }\n}"
+    },
+    "referenceSolutions": {
+      "JAVASCRIPT": "const readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });\nrl.on('line', (line) => {\n  let n = parseInt(line.trim(), 10);\n  let sum = 0;\n  while (n > 0) {\n    sum += n % 10;\n    n = Math.floor(n / 10);\n  }\n  console.log(sum);\n  rl.close();\n});",
+      "PYTHON": "import sys\n\nn = int(sys.stdin.readline().strip())\ns = 0\nwhile n > 0:\n    s += n % 10\n    n //= 10\nprint(s)",
+      "JAVA": "import java.util.Scanner;\n\nclass Main {\n  public static void main(String[] args) {\n    Scanner s = new Scanner(System.in);\n    long n = Long.parseLong(s.nextLine().trim());\n    long sum = 0;\n    while (n > 0) {\n      sum += n % 10;\n      n /= 10;\n    }\n    System.out.println(sum);\n    s.close();\n  }\n}"
+    }
+  },
+  {
+    "title": "Count Vowels",
+    "description": "Read one line of input (letters only). Count how many vowels appear: a, e, i, o, u in either lowercase or uppercase. Print the count as an integer.",
+    "difficulty": "MEDIUM",
+    "tags": ["Strings", "Implementation"],
+    "constraints": "Length of line is between 1 and 1000, English letters only",
+    "hints": "Normalize each character with toLowerCase() or check both cases.",
+    "editorial": "Scan each character and increment counter if it is one of the ten vowel forms.",
+    "testcases": [
+      { "input": "hello", "output": "2" },
+      { "input": "AEIOU", "output": "5" },
+      { "input": "xyz", "output": "0" }
+    ],
+    "examples": {
+      "JAVASCRIPT": {
+        "input": "\"LeetLab\"",
+        "output": "3",
+        "explanation": "Letters e, e, a are vowels."
+      },
+      "PYTHON": {
+        "input": "\"Rhythm\"",
+        "output": "0",
+        "explanation": "No vowels in this spelling."
+      },
+      "JAVA": {
+        "input": "\"Interview\"",
+        "output": "4",
+        "explanation": "i, e, i, e are vowels."
+      }
+    },
+    "codeSnippets": {
+      "JAVASCRIPT": "const readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });\nrl.on('line', (line) => {\n  const s = line.trim();\n  // count vowels a,e,i,o,u ignoring case\n  rl.close();\n});",
+      "PYTHON": "import sys\n\ns = sys.stdin.readline().strip()\n# count vowels\n",
+      "JAVA": "import java.util.Scanner;\n\nclass Main {\n  public static void main(String[] args) {\n    Scanner s = new Scanner(System.in);\n    String line = s.nextLine().trim();\n    // count vowels\n    s.close();\n  }\n}"
+    },
+    "referenceSolutions": {
+      "JAVASCRIPT": "const readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });\nconst vowels = new Set(['a', 'e', 'i', 'o', 'u']);\nrl.on('line', (line) => {\n  const s = line.trim();\n  let cnt = 0;\n  for (const ch of s) {\n    if (vowels.has(ch.toLowerCase())) cnt++;\n  }\n  console.log(cnt);\n  rl.close();\n});",
+      "PYTHON": "import sys\n\ns = sys.stdin.readline().strip()\nv = set('aeiouAEIOU')\nprint(sum(1 for c in s if c in v))",
+      "JAVA": "import java.util.Scanner;\n\nclass Main {\n  public static void main(String[] args) {\n    Scanner sc = new Scanner(System.in);\n    String line = sc.nextLine().trim();\n    int cnt = 0;\n    for (int i = 0; i < line.length(); i++) {\n      char c = Character.toLowerCase(line.charAt(i));\n      if (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u') cnt++;\n    }\n    System.out.println(cnt);\n    sc.close();\n  }\n}"
+    }
+  }
+]
