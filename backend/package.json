@@ -9,7 +9,7 @@
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
     "render:build": "npm ci && npx prisma generate",
-    "db:migrate": "npx prisma migrate deploy"
+    "db:migrate": "prisma migrate deploy"
   },
   "keywords": [],
   "author": "",
