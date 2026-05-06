@@ -13,10 +13,12 @@ import analyzeCodeRoutes from "./routes/analyzeCode.routes.js";
 import { db } from "./libs/db.js";
 
 const app = express();
+const PORT = process.env.PORT || 8081;
+const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:5173";
 
 app.use(
     cors({
-      origin: "http://localhost:5173",
+      origin: CORS_ORIGIN,
       credentials: true,
     })
   );
@@ -60,6 +62,6 @@ app.use("/api/v1/playlist", playlistRoutes);
 app.use("/api/v1/ai", aiRoutes);
 app.use("/api/v1/analyze-code", analyzeCodeRoutes);
 
-app.listen(process.env.PORT, () => {
-  console.log("Server is running on port 8081");
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
