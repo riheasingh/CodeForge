@@ -2,8 +2,8 @@ import express from "express";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { analyzeCode } from "../controllers/ai.controller.js";
 
-const aiRoutes = express.Router();
+const analyzeCodeRoutes = express.Router();
 
-aiRoutes.post("/review", authMiddleware, analyzeCode);
+analyzeCodeRoutes.post("/", authMiddleware, analyzeCode);
 
-export default aiRoutes;
+export default analyzeCodeRoutes;

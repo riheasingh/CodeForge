@@ -67,8 +67,15 @@ const ProblemPage = () => {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [testcases, setTestCases] = useState([]);
 
-  const { executeCode, submission, isExecuting, aiReview, isReviewLoading } =
-    useExecutionStore();
+  const {
+    executeCode,
+    analyzeCode,
+    submission,
+    isExecuting,
+    codeAnalysis,
+    isAnalysisLoading,
+    analysisError,
+  } = useExecutionStore();
 
   useEffect(() => {
     getProblemById(id);
@@ -147,6 +154,18 @@ const ProblemPage = () => {
     } catch (error) {
       console.log("Error submitting code", error);
     }
+  };
+
+  const handleAnalyzeCode = () => {
+    if (!submission) return;
+
+    analyzeCode({
+      code: submission.sourceCode || code,
+      language: submission.language || selectedLanguage,
+      problemTitle: problem.title,
+      problemDescription: problem.description,
+      submissionId: submission.id,
+    });
   };
 
   const latestSubmission = submissions?.[0] || null;
@@ -421,8 +440,10 @@ const ProblemPage = () => {
             {submission ? (
               <Submission
                 submission={submission}
-                aiReview={aiReview}
-                isReviewLoading={isReviewLoading}
+                codeAnalysis={codeAnalysis}
+                isAnalysisLoading={isAnalysisLoading}
+                analysisError={analysisError}
+                onAnalyzeCode={handleAnalyzeCode}
               />
             ) : (
               <>

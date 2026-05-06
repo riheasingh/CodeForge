@@ -3,6 +3,75 @@ import crypto from "crypto";
 
 const PISTON_API_URL = process.env.PISTON_API_URL || "http://localhost:2000";
 
+const readPositiveNumberEnv = (keys, fallback) => {
+  for (const key of keys) {
+    const value = Number(process.env[key]);
+    if (Number.isFinite(value) && value > 0) return value;
+  }
+  return fallback;
+};
+
+const readOptionalPositiveNumberEnv = (keys) => {
+  for (const key of keys) {
+    const value = Number(process.env[key]);
+    if (Number.isFinite(value) && value > 0) return value;
+  }
+  return undefined;
+};
+
+const parseJsonEnv = (key, fallback) => {
+  const raw = process.env[key];
+  if (!raw) return fallback;
+
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    console.warn(`[execution] Ignoring invalid ${key}: ${error.message}`);
+    return fallback;
+  }
+};
+
+const PISTON_DEFAULT_LIMITS = {
+  run_timeout: readPositiveNumberEnv(
+    ["PISTON_RUN_TIMEOUT_MS", "PISTON_RUN_TIMEOUT"],
+    8000
+  ),
+  compile_timeout: readPositiveNumberEnv(
+    ["PISTON_COMPILE_TIMEOUT_MS", "PISTON_COMPILE_TIMEOUT"],
+    15000
+  ),
+};
+
+const PISTON_DEFAULT_CPU_LIMITS = {
+  run_cpu_time: readOptionalPositiveNumberEnv([
+    "PISTON_RUN_CPU_TIME_MS",
+    "PISTON_RUN_CPU_TIME",
+  ]),
+  compile_cpu_time: readOptionalPositiveNumberEnv([
+    "PISTON_COMPILE_CPU_TIME_MS",
+    "PISTON_COMPILE_CPU_TIME",
+  ]),
+};
+
+const PISTON_LIMIT_OVERRIDES = parseJsonEnv("PISTON_LIMIT_OVERRIDES", {});
+const PISTON_BATCH_CONCURRENCY = readPositiveNumberEnv(
+  ["PISTON_BATCH_CONCURRENCY"],
+  4
+);
+const PISTON_JAVA_BATCH_CONCURRENCY = readPositiveNumberEnv(
+  ["PISTON_JAVA_BATCH_CONCURRENCY"],
+  1
+);
+const EXECUTION_DEBUG =
+  String(process.env.EXECUTION_DEBUG || "").toLowerCase() === "true" ||
+  process.env.EXECUTION_DEBUG === "1";
+
+const debugExecution = (event, details = {}) => {
+  if (EXECUTION_DEBUG) {
+    console.log(`[execution:${event}]`, details);
+  }
+};
+
 const LANGUAGE_MAP = {
   PYTHON: { id: 71, runtime: "python", version: "3.10.0", name: "Python" },
   JAVA: { id: 62, runtime: "java", version: "15.0.2", name: "Java" },
@@ -32,7 +101,80 @@ const formatAxiosError = (error) => {
   if (error?.response) {
     return `Piston request failed with status ${error.response.status}: ${JSON.stringify(error.response.data)}`;
   }
+  if (error?.code) {
+    return `Piston request failed (${error.code}): ${error.message || "Unknown error"}`;
+  }
   return `Piston request failed: ${error?.message || "Unknown error"}`;
+};
+
+const normalizeLimitValue = (value) => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : undefined;
+};
+
+const getPistonLimits = (lang) => {
+  const override =
+    PISTON_LIMIT_OVERRIDES?.[`${lang.runtime}-${lang.version}`] ||
+    PISTON_LIMIT_OVERRIDES?.[lang.runtime] ||
+    {};
+
+  const limits = { ...PISTON_DEFAULT_LIMITS };
+
+  for (const key of ["run_cpu_time", "compile_cpu_time"]) {
+    const value = PISTON_DEFAULT_CPU_LIMITS[key];
+    if (value) limits[key] = value;
+  }
+
+  for (const key of [
+    "run_timeout",
+    "compile_timeout",
+    "run_cpu_time",
+    "compile_cpu_time",
+  ]) {
+    const value = normalizeLimitValue(override[key]);
+    if (value) limits[key] = value;
+  }
+
+  return limits;
+};
+
+const hasTimedOut = (stage = {}) => {
+  const message = String(stage.message || "").toLowerCase();
+  return (
+    stage.status === "TO" ||
+    message.includes("time limit") ||
+    message.includes("timed out")
+  );
+};
+
+const hasMemoryExceeded = (stage = {}) => {
+  const message = String(stage.message || "").toLowerCase();
+  return message.includes("memory");
+};
+
+const stageFailed = (stage = {}) =>
+  Boolean(stage.status) ||
+  Boolean(stage.signal) ||
+  (typeof stage.code === "number" && stage.code !== 0);
+
+const stageSummary = (stage = {}) => ({
+  status: stage.status ?? null,
+  code: stage.code ?? null,
+  signal: stage.signal ?? null,
+  message: stage.message ?? null,
+  stdoutLength: stage.stdout?.length || 0,
+  stderrLength: stage.stderr?.length || 0,
+  wall_time: stage.wall_time ?? null,
+  cpu_time: stage.cpu_time ?? null,
+  memory: stage.memory ?? null,
+});
+
+const hasJavaCompileErrorInRun = (run = {}) => {
+  const stderr = String(run.stderr || "");
+  return (
+    stderr.includes("error: compilation failed") ||
+    /(^|\n).+\.java(?:\.java)?:\d+:\s+error:/m.test(stderr)
+  );
 };
 
 /**
@@ -59,7 +201,7 @@ function normalizeJavaForPiston(source_code) {
   return fixed.join("\n");
 }
 
-const runSingle = async ({ source_code, language_id, stdin }) => {
+const runSingle = async ({ source_code, language_id, stdin, testCase }) => {
   const lang = resolveLanguageConfig(language_id);
   if (!lang) {
     return {
@@ -74,6 +216,7 @@ const runSingle = async ({ source_code, language_id, stdin }) => {
   }
 
   try {
+    const startedAt = Date.now();
     const fileNameByRuntime = {
       java: "Main.java",
       python: "main.py",
@@ -86,7 +229,14 @@ const runSingle = async ({ source_code, language_id, stdin }) => {
         ? normalizeJavaForPiston(source_code)
         : source_code;
 
-    const response = await axios.post(`${PISTON_API_URL}/api/v2/execute`, {
+    const normalizedStdin = (() => {
+      const input = stdin == null ? "" : String(stdin);
+      if (!input) return "";
+      return input.endsWith("\n") ? input : `${input}\n`;
+    })();
+
+    const limits = getPistonLimits(lang);
+    const payload = {
       language: lang.runtime,
       version: lang.version,
       files: [
@@ -95,29 +245,86 @@ const runSingle = async ({ source_code, language_id, stdin }) => {
           content: fileContent,
         },
       ],
-      stdin: stdin ?? "",
+      stdin: normalizedStdin,
+      ...limits,
+    };
+
+    debugExecution("piston.request", {
+      testCase,
+      language: lang.name,
+      runtime: lang.runtime,
+      version: lang.version,
+      sourceLength: fileContent?.length || 0,
+      stdinLength: normalizedStdin.length,
+      limits,
     });
+
+    const response = await axios.post(
+      `${PISTON_API_URL}/api/v2/execute`,
+      payload,
+      {
+        timeout: limits.compile_timeout + limits.run_timeout + 5000,
+      }
+    );
 
     const run = response?.data?.run || {};
     const compile = response?.data?.compile || {};
-    const hasRuntimeError = Boolean(run.stderr);
-    const hasCompileError = Boolean(compile.stderr || compile.output);
+    const compileTimedOut = hasTimedOut(compile);
+    const runTimedOut = hasTimedOut(run);
+    const runHasCompileError =
+      lang.runtime === "java" && hasJavaCompileErrorInRun(run);
+    const hasCompileError = stageFailed(compile) || runHasCompileError;
+    const hasRuntimeError = stageFailed(run) || Boolean(run.stderr);
+    const isTimeLimitExceeded = compileTimedOut || runTimedOut;
+    const isMemoryLimitExceeded =
+      hasMemoryExceeded(compile) || hasMemoryExceeded(run);
+
     const status = hasCompileError
-      ? { id: 6, description: "Compilation Error" }
-      : hasRuntimeError
-        ? { id: 11, description: "Runtime Error" }
-        : { id: 3, description: "Accepted" };
+      ? compileTimedOut
+        ? { id: 5, description: "Time Limit Exceeded" }
+        : { id: 6, description: "Compilation Error" }
+      : isTimeLimitExceeded
+        ? { id: 5, description: "Time Limit Exceeded" }
+        : isMemoryLimitExceeded
+          ? { id: 12, description: "Memory Limit Exceeded" }
+          : hasRuntimeError
+            ? { id: 11, description: "Runtime Error" }
+            : { id: 3, description: "Accepted" };
+
+    debugExecution("piston.response", {
+      testCase,
+      language: lang.name,
+      durationMs: Date.now() - startedAt,
+      status,
+      compile: stageSummary(compile),
+      run: stageSummary(run),
+    });
 
     return {
       stdout: run.stdout ?? null,
-      stderr: run.stderr ?? null,
-      compile_output: compile.stderr || compile.output || null,
+      stderr: runHasCompileError ? null : run.stderr ?? null,
+      compile_output:
+        compile.stderr ||
+        compile.output ||
+        (runHasCompileError ? run.stderr : null),
       message: run.message || null,
-      time: null,
-      memory: null,
+      time:
+        typeof run.wall_time === "number"
+          ? (run.wall_time / 1000).toFixed(3)
+          : null,
+      memory:
+        typeof run.memory === "number"
+          ? Math.ceil(run.memory / 1024)
+          : null,
       status,
     };
   } catch (error) {
+    debugExecution("piston.error", {
+      testCase,
+      language: lang.name,
+      message: formatAxiosError(error),
+    });
+
     return {
       stdout: null,
       stderr: null,
@@ -135,8 +342,52 @@ export const getJudge0LanguageId = (language) => {
   return lang?.id;
 };
 
+const runWithConcurrency = async (items, concurrency, worker) => {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+
+  const workers = Array.from(
+    { length: Math.min(concurrency, items.length) },
+    async () => {
+      while (nextIndex < items.length) {
+        const currentIndex = nextIndex;
+        nextIndex += 1;
+        results[currentIndex] = await worker(items[currentIndex], currentIndex);
+      }
+    }
+  );
+
+  await Promise.all(workers);
+  return results;
+};
+
+const getBatchConcurrency = (submissions) => {
+  const lang = resolveLanguageConfig(submissions?.[0]?.language_id);
+  return lang?.runtime === "java"
+    ? PISTON_JAVA_BATCH_CONCURRENCY
+    : PISTON_BATCH_CONCURRENCY;
+};
+
 export const submitBatch = async (submissions) => {
-  const results = await Promise.all(submissions.map(runSingle));
+  const concurrency = getBatchConcurrency(submissions);
+  debugExecution("batch.start", {
+    size: submissions.length,
+    concurrency,
+    language: getLanguageName(submissions?.[0]?.language_id),
+  });
+
+  const results = await runWithConcurrency(
+    submissions,
+    concurrency,
+    (submission, index) =>
+      runSingle({ ...submission, testCase: submission.testCase || index + 1 })
+  );
+
+  debugExecution("batch.finish", {
+    size: submissions.length,
+    status: results.map((result) => result.status?.description),
+  });
+
   return results.map((result) => {
     const token = crypto.randomUUID();
     executionStore.set(token, result);
@@ -158,6 +409,7 @@ export const pollBatchResults = async (tokens) => {
         status: { id: 13, description: "Internal Error" },
       };
     }
+    executionStore.delete(token);
     return { ...result, token };
   });
   return results;

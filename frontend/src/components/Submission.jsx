@@ -1,34 +1,57 @@
-import React from 'react';
-import { CheckCircle2, XCircle, Clock, MemoryStick as Memory } from 'lucide-react';
+import React from "react";
+import {
+  CheckCircle2,
+  XCircle,
+  Clock,
+  MemoryStick as Memory,
+  Sparkles,
+} from "lucide-react";
 
-const SubmissionResults = ({ submission, aiReview, isReviewLoading }) => {
-  // Parse stringified arrays
-  const memoryArr = JSON.parse(submission.memory || '[]');
-  const timeArr = JSON.parse(submission.time || '[]');
+const safeParseArray = (value) => {
+  try {
+    const parsed = JSON.parse(value || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
 
-  // Calculate averages
+const SubmissionResults = ({
+  submission,
+  codeAnalysis,
+  isAnalysisLoading,
+  analysisError,
+  onAnalyzeCode,
+}) => {
+  const memoryArr = safeParseArray(submission.memory);
+  const timeArr = safeParseArray(submission.time);
+
   const avgMemory = memoryArr.length
-    ? memoryArr.map(m => parseFloat(m)).reduce((a, b) => a + b, 0) / memoryArr.length
+    ? memoryArr.map((m) => parseFloat(m)).reduce((a, b) => a + b, 0) /
+      memoryArr.length
     : 0;
 
   const avgTime = timeArr.length
-    ? timeArr.map(t => parseFloat(t)).reduce((a, b) => a + b, 0) / timeArr.length
+    ? timeArr.map((t) => parseFloat(t)).reduce((a, b) => a + b, 0) /
+      timeArr.length
     : 0;
 
-  const passedTests = submission.testCases.filter(tc => tc.passed).length;
+  const passedTests = submission.testCases.filter((tc) => tc.passed).length;
   const totalTests = submission.testCases.length;
-  const successRate = (passedTests / totalTests) * 100;
+  const successRate = totalTests ? (passedTests / totalTests) * 100 : 0;
+  const canAnalyze = submission.id !== "preview";
 
   return (
     <div className="space-y-6">
-      {/* Overall Status */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="card bg-base-200 shadow-lg">
           <div className="card-body p-4">
             <h3 className="card-title text-sm">Status</h3>
-            <div className={`text-lg font-bold ${
-              submission.status === 'Accepted' ? 'text-success' : 'text-error'
-            }`}>
+            <div
+              className={`text-lg font-bold ${
+                submission.status === "Accepted" ? "text-success" : "text-error"
+              }`}
+            >
               {submission.status}
             </div>
           </div>
@@ -37,9 +60,7 @@ const SubmissionResults = ({ submission, aiReview, isReviewLoading }) => {
         <div className="card bg-base-200 shadow-lg">
           <div className="card-body p-4">
             <h3 className="card-title text-sm">Success Rate</h3>
-            <div className="text-lg font-bold">
-              {successRate.toFixed(1)}%
-            </div>
+            <div className="text-lg font-bold">{successRate.toFixed(1)}%</div>
           </div>
         </div>
 
@@ -49,9 +70,7 @@ const SubmissionResults = ({ submission, aiReview, isReviewLoading }) => {
               <Clock className="w-4 h-4" />
               Avg. Runtime
             </h3>
-            <div className="text-lg font-bold">
-              {avgTime.toFixed(3)} s
-            </div>
+            <div className="text-lg font-bold">{avgTime.toFixed(3)} s</div>
           </div>
         </div>
 
@@ -61,14 +80,11 @@ const SubmissionResults = ({ submission, aiReview, isReviewLoading }) => {
               <Memory className="w-4 h-4" />
               Avg. Memory
             </h3>
-            <div className="text-lg font-bold">
-              {avgMemory.toFixed(0)} KB
-            </div>
+            <div className="text-lg font-bold">{avgMemory.toFixed(0)} KB</div>
           </div>
         </div>
       </div>
 
-      {/* Test Cases Results */}
       <div className="card bg-base-100 shadow-xl">
         <div className="card-body">
           <h2 className="card-title mb-4">Test Cases Results</h2>
@@ -100,7 +116,7 @@ const SubmissionResults = ({ submission, aiReview, isReviewLoading }) => {
                       )}
                     </td>
                     <td className="font-mono">{testCase.expected}</td>
-                    <td className="font-mono">{testCase.stdout || 'null'}</td>
+                    <td className="font-mono">{testCase.stdout || "null"}</td>
                     <td>{testCase.memory}</td>
                     <td>{testCase.time}</td>
                   </tr>
@@ -111,80 +127,50 @@ const SubmissionResults = ({ submission, aiReview, isReviewLoading }) => {
         </div>
       </div>
 
-      <div className="card bg-base-100 shadow-xl">
-        <div className="card-body">
-          <h2 className="card-title mb-2">AI Code Review</h2>
-
-          {isReviewLoading ? (
-            <div className="flex items-center gap-2 text-base-content/70">
-              <span className="loading loading-spinner loading-sm"></span>
-              Generating AI review...
+      {canAnalyze && (
+        <div className="card bg-base-100 shadow-xl">
+          <div className="card-body">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="card-title">AI Code Analyzer</h2>
+              <button
+                className="btn btn-primary btn-sm gap-2"
+                onClick={onAnalyzeCode}
+                disabled={isAnalysisLoading}
+              >
+                {isAnalysisLoading ? (
+                  <span className="loading loading-spinner loading-xs"></span>
+                ) : (
+                  <Sparkles className="w-4 h-4" />
+                )}
+                Analyze Code
+              </button>
             </div>
-          ) : aiReview ? (
-            <div className="space-y-4">
-              <p className="text-base-content/80">
-                {aiReview.correctnessAnalysis || aiReview.summary}
-              </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="badge badge-outline p-4 justify-start">
-                  Time: {aiReview.timeComplexity}
+            {analysisError && (
+              <div className="alert alert-error mt-4">
+                <span>{analysisError}</span>
+              </div>
+            )}
+
+            {codeAnalysis && (
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="bg-base-200 rounded-lg p-4">
+                  <h3 className="font-semibold mb-2">Time Complexity</h3>
+                  <p>{codeAnalysis.timeComplexity}</p>
                 </div>
-                <div className="badge badge-outline p-4 justify-start">
-                  Space: {aiReview.spaceComplexity}
+                <div className="bg-base-200 rounded-lg p-4">
+                  <h3 className="font-semibold mb-2">Space Complexity</h3>
+                  <p>{codeAnalysis.spaceComplexity}</p>
+                </div>
+                <div className="bg-base-200 rounded-lg p-4">
+                  <h3 className="font-semibold mb-2">Better Approach</h3>
+                  <p>{codeAnalysis.optimization}</p>
                 </div>
               </div>
-
-              <div>
-                <h3 className="font-semibold mb-2">Bug Analysis</h3>
-                <p className="text-base-content/80">
-                  {aiReview.bugAnalysis || "No specific bug detected."}
-                </p>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-2">Optimality</h3>
-                <p className="text-base-content/80">
-                  {aiReview.isOptimal
-                    ? "Your solution appears optimal for this problem."
-                    : "Your solution can likely be optimized further."}
-                </p>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-2">Code Smells / Readability</h3>
-                <ul className="list-disc ml-5 space-y-1">
-                  {(aiReview.codeQualityReview || aiReview.codeSmells || []).map((item, idx) => (
-                    <li key={idx}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-2">Better Approach Suggestions</h3>
-                <ul className="list-disc ml-5 space-y-1">
-                  {(aiReview.optimizationSuggestions || aiReview.suggestions || []).map((item, idx) => (
-                    <li key={idx}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-2">Interview Feedback</h3>
-                <ul className="list-disc ml-5 space-y-1">
-                  {(aiReview.interviewFeedback || []).map((item, idx) => (
-                    <li key={idx}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          ) : (
-            <p className="text-base-content/70">
-              AI review unavailable for this run.
-            </p>
-          )}
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
