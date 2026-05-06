@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import {db} from "../libs/db.js"
-import { UserRole } from "../generated/prisma/index.js";
+import { UserRole } from "@prisma/client";
 import jwt from "jsonwebtoken";
 
 function getJwtCookieOptions() {
