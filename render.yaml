@@ -23,7 +23,7 @@ services:
     rootDir: backend
     branch: main
     autoDeploy: true
-    buildCommand: npm ci && npx prisma generate && npx prisma migrate deploy
+    buildCommand: npm run render:build
     startCommand: npm start
     healthCheckPath: /health
     envVars:
@@ -40,7 +40,7 @@ services:
       - key: CORS_ORIGIN
         value: https://codeforge-frontend.onrender.com
       - key: PISTON_API_URL
-        sync: false
+        value: ""
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_MODEL
